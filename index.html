@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>散歩ルート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root {
+    --bg: #f8f8fb;
+    --surface: #ffffff;
+    --text: #1a1a1c;
+    --text-sub: #626264;
+    --border: #d8d8db;
+    --primary: #0017c1;
+    --primary-hover: #00118f;
+    --primary-light: #e8f1fe;
+    --disabled: #b4b4b7;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "Noto Sans JP", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+  }
+  header h1 { margin: 0; font-size: 1.125rem; }
+  header p { margin: 0; font-size: 0.8125rem; color: var(--text-sub); }
+
+  main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  #map { height: 45vh; min-height: 260px; }
+
+  .panel {
+    background: var(--surface);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .field { display: flex; flex-direction: column; gap: 8px; border: 0; padding: 0; margin: 0; }
+  .label { font-weight: 700; font-size: 0.9375rem; }
+  .hint { font-size: 0.8125rem; color: var(--text-sub); margin: 0; }
+
+  .start-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .start-status {
+    flex: 1; min-width: 160px;
+    font-size: 0.875rem;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+  .start-status.set { border-color: var(--primary); background: var(--primary-light); }
+
+  .time-row { display: flex; align-items: center; gap: 12px; }
+  .time-row input[type="range"] { flex: 1; accent-color: var(--primary); }
+  .time-value { font-weight: 700; min-width: 4.5em; text-align: right; }
+
+  .segment { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .segment input { position: absolute; opacity: 0; pointer-events: none; }
+  .segment label {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.9375rem;
+  }
+  .segment label small { font-size: 0.75rem; color: var(--text-sub); }
+  .segment input:checked + label {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 700;
+  }
+  .segment input:focus-visible + label { outline: 3px solid #fd0; outline-offset: 2px; }
+
+  .summary {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 12px 16px;
+    background: var(--bg);
+    border-radius: var(--radius);
+  }
+  .summary strong { font-size: 1.5rem; }
+
+  button {
+    font: inherit;
+    border-radius: var(--radius);
+    cursor: pointer;
+    padding: 10px 16px;
+  }
+  button:focus-visible { outline: 3px solid #fd0; outline-offset: 2px; }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    font-size: 0.875rem;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font-weight: 700;
+    padding: 14px 16px;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+  .btn-primary:disabled { background: var(--disabled); cursor: not-allowed; }
+
+  .message { font-size: 0.875rem; margin: 0; min-height: 1.5em; }
+  .message.error { color: #ce0000; }
+
+  @media (min-width: 900px) {
+    main { flex-direction: row; }
+    .panel { width: 380px; order: -1; overflow-y: auto; border-right: 1px solid var(--border); }
+    #map { flex: 1; height: auto; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>散歩ルート</h1>
+  <p>時間と歩く速さから、散歩ルートを組みます</p>
+</header>
+
+<main>
+  <div id="map" aria-label="地図。タップすると出発地点を指定できます"></div>
+
+  <section class="panel">
+    <div class="field">
+      <span class="label">出発地点</span>
+      <p class="hint">地図をタップするか、現在地を使ってください。ピンはドラッグで動かせます。</p>
+      <div class="start-row">
+        <div id="startStatus" class="start-status">未指定</div>
+        <button type="button" id="locateBtn" class="btn-secondary">現在地を使う</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="timeInput">歩く時間</label>
+      <div class="time-row">
+        <input type="range" id="timeInput" min="15" max="180" step="5" value="60">
+        <span id="timeValue" class="time-value">60分</span>
+      </div>
+    </div>
+
+    <fieldset class="field">
+      <legend class="label">歩く速さ</legend>
+      <div class="segment">
+        <input type="radio" name="speed" id="speedSlow" value="65">
+        <label for="speedSlow">ゆっくり<small>時速約4km</small></label>
+        <input type="radio" name="speed" id="speedNormal" value="80" checked>
+        <label for="speedNormal">ふつう<small>時速約4.8km</small></label>
+        <input type="radio" name="speed" id="speedFast" value="100">
+        <label for="speedFast">はやめ<small>時速約6km</small></label>
+      </div>
+    </fieldset>
+
+    <div class="summary">
+      <span>目安の距離</span>
+      <span><strong id="distanceValue">4.8</strong> km</span>
+    </div>
+
+    <button type="button" id="generateBtn" class="btn-primary" disabled>ルートをつくる</button>
+    <p id="message" class="message" role="status"></p>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+  // ---- 設定 ----
+  const DEFAULT_CENTER = [35.6812, 139.7671]; // 東京駅
+  const DEFAULT_ZOOM = 15;
+
+  // ---- 状態 ----
+  const state = {
+    start: null,       // { lat, lng }
+    minutes: 60,
+    speed: 80          // 分速（m）
+  };
+
+  // ---- 地図 ----
+  const map = L.map('map').setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  let startMarker = null;
+
+  function setStart(lat, lng) {
+    state.start = { lat, lng };
+    if (startMarker) {
+      startMarker.setLatLng([lat, lng]);
+    } else {
+      startMarker = L.marker([lat, lng], { draggable: true, title: '出発地点' }).addTo(map);
+      startMarker.on('dragend', (e) => {
+        const p = e.target.getLatLng();
+        setStart(p.lat, p.lng);
+      });
+    }
+    const status = document.getElementById('startStatus');
+    status.textContent = `指定済み（${lat.toFixed(5)}, ${lng.toFixed(5)}）`;
+    status.classList.add('set');
+    update();
+  }
+
+  map.on('click', (e) => setStart(e.latlng.lat, e.latlng.lng));
+
+  // ---- 現在地 ----
+  document.getElementById('locateBtn').addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      showMessage('この端末では現在地を取得できません。地図をタップして指定してください。', true);
+      return;
+    }
+    showMessage('現在地を取得しています…');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setStart(latitude, longitude);
+        map.setView([latitude, longitude], DEFAULT_ZOOM);
+        showMessage('');
+      },
+      () => showMessage('現在地を取得できませんでした。位置情報の許可を確認するか、地図をタップして指定してください。', true),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+
+  // ---- 入力 ----
+  document.getElementById('timeInput').addEventListener('input', (e) => {
+    state.minutes = Number(e.target.value);
+    update();
+  });
+
+  document.querySelectorAll('input[name="speed"]').forEach((el) => {
+    el.addEventListener('change', (e) => {
+      state.speed = Number(e.target.value);
+      update();
+    });
+  });
+
+  // ---- 表示の更新 ----
+  function targetDistanceKm() {
+    return (state.minutes * state.speed) / 1000;
+  }
+
+  function update() {
+    document.getElementById('timeValue').textContent = `${state.minutes}分`;
+    document.getElementById('distanceValue').textContent = targetDistanceKm().toFixed(1);
+    document.getElementById('generateBtn').disabled = !state.start;
+  }
+
+  function showMessage(text, isError = false) {
+    const el = document.getElementById('message');
+    el.textContent = text;
+    el.classList.toggle('error', isError);
+  }
+
+  // ---- ルート生成（手順8で実装） ----
+  document.getElementById('generateBtn').addEventListener('click', () => {
+    showMessage(`約${targetDistanceKm().toFixed(1)}kmの周回ルートを作ります（ルート計算は次の手順で実装します）。`);
+  });
+
+  update();
+</script>
+</body>
+</html>
