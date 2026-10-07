@@ -118,6 +118,17 @@
   .btn-primary:disabled { background: var(--disabled); cursor: not-allowed; }
 
   .message { font-size: 0.875rem; margin: 0; min-height: 1.5em; }
+
+  .result {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 16px;
+    border: 1px solid var(--primary);
+    border-radius: var(--radius);
+    background: var(--primary-light);
+  }
+  .result[hidden] { display: none; }
+  .result-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .result-row strong { font-size: 1.125rem; }
   .message.error { color: #ce0000; }
 
   @media (min-width: 900px) {
@@ -173,6 +184,12 @@
 
     <button type="button" id="generateBtn" class="btn-primary" disabled>ルートをつくる</button>
     <p id="message" class="message" role="status"></p>
+
+    <div id="result" class="result" hidden>
+      <div class="result-row"><span>ルートの距離</span><strong id="resultDistance">-</strong></div>
+      <div class="result-row"><span>予想時間</span><strong id="resultTime">-</strong></div>
+      <button type="button" id="anotherBtn" class="btn-secondary">別のルートにする</button>
+    </div>
   </section>
 </main>
 
@@ -181,13 +198,20 @@
   // ---- 設定 ----
   const DEFAULT_CENTER = [35.6812, 139.7671]; // 東京駅
   const DEFAULT_ZOOM = 15;
+  // ↓ Cloudflare Workerを作成したあと、そのURLに書き換える
+  const WORKER_URL = 'https://walking-route-api.penguin1729.workers.dev';
+  const TOLERANCE = 0.1;   // 目標距離との許容誤差（±10%）
+  const MAX_TRIES = 3;     // 1回の生成で試す最大回数
 
   // ---- 状態 ----
   const state = {
     start: null,       // { lat, lng }
     minutes: 60,
-    speed: 80          // 分速（m）
+    speed: 80,         // 分速（m）
+    seed: 0            // 周回ルートの形を変える値
   };
+  let routeLayer = null;
+  let loading = false;
 
   // ---- 地図 ----
   const map = L.map('map').setView(DEFAULT_CENTER, DEFAULT_ZOOM);
@@ -257,7 +281,16 @@
   function update() {
     document.getElementById('timeValue').textContent = `${state.minutes}分`;
     document.getElementById('distanceValue').textContent = targetDistanceKm().toFixed(1);
-    document.getElementById('generateBtn').disabled = !state.start;
+    document.getElementById('generateBtn').disabled = !state.start || loading;
+    clearRoute(); // 条件が変わったら古いルートは消す
+  }
+
+  function clearRoute() {
+    if (routeLayer) {
+      map.removeLayer(routeLayer);
+      routeLayer = null;
+    }
+    document.getElementById('result').hidden = true;
   }
 
   function showMessage(text, isError = false) {
@@ -266,9 +299,87 @@
     el.classList.toggle('error', isError);
   }
 
-  // ---- ルート生成（手順8で実装） ----
-  document.getElementById('generateBtn').addEventListener('click', () => {
-    showMessage(`約${targetDistanceKm().toFixed(1)}kmの周回ルートを作ります（ルート計算は次の手順で実装します）。`);
+  // ---- ルート生成 ----
+  async function fetchRoute(length, seed) {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lat: state.start.lat,
+        lng: state.start.lng,
+        length: Math.round(Math.min(Math.max(length, 500), 20000)),
+        seed
+      })
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data || !data.features || !data.features.length) {
+      const reason = data && (data.error?.message || data.error);
+      throw new Error(typeof reason === 'string' ? reason : `通信エラー（${res.status}）`);
+    }
+    return data;
+  }
+
+  function routeDistance(geojson) {
+    return geojson.features[0].properties.summary.distance; // m
+  }
+
+  async function generateRoute() {
+    if (!state.start || loading) return;
+    const target = targetDistanceKm() * 1000;
+
+    loading = true;
+    document.getElementById('generateBtn').disabled = true;
+    document.getElementById('anotherBtn').disabled = true;
+    showMessage('ルートを計算しています…');
+
+    try {
+      let requestLength = target;
+      let best = null;
+
+      // 目標距離から±10%に入るまで、依頼する距離を補正して最大3回試す
+      for (let i = 0; i < MAX_TRIES; i++) {
+        const geojson = await fetchRoute(requestLength, state.seed);
+        const actual = routeDistance(geojson);
+        if (!best || Math.abs(actual - target) < Math.abs(routeDistance(best) - target)) {
+          best = geojson;
+        }
+        if (Math.abs(actual - target) / target <= TOLERANCE) break;
+        requestLength = requestLength * (target / actual);
+      }
+
+      drawRoute(best);
+      const actual = routeDistance(best);
+      const diff = Math.abs(actual - target) / target;
+      showMessage(diff > TOLERANCE
+        ? '目標の距離から少しずれています。「別のルートにする」で形を変えると近づく場合があります。'
+        : '');
+    } catch (err) {
+      showMessage(`ルートを作れませんでした：${err.message}`, true);
+    } finally {
+      loading = false;
+      document.getElementById('generateBtn').disabled = !state.start;
+      document.getElementById('anotherBtn').disabled = false;
+    }
+  }
+
+  function drawRoute(geojson) {
+    if (routeLayer) map.removeLayer(routeLayer);
+    routeLayer = L.geoJSON(geojson, {
+      style: { color: '#0017c1', weight: 5, opacity: 0.8 }
+    }).addTo(map);
+    map.fitBounds(routeLayer.getBounds(), { padding: [24, 24] });
+
+    const meters = routeDistance(geojson);
+    const minutes = Math.round(meters / state.speed);
+    document.getElementById('resultDistance').textContent = `${(meters / 1000).toFixed(1)} km`;
+    document.getElementById('resultTime').textContent = `約${minutes}分`;
+    document.getElementById('result').hidden = false;
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', generateRoute);
+  document.getElementById('anotherBtn').addEventListener('click', () => {
+    state.seed = (state.seed + 1) % 91; // 0〜90の範囲で形を変える
+    generateRoute();
   });
 
   update();
