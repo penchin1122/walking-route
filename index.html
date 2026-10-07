@@ -181,6 +181,15 @@
   .result-row { display: flex; justify-content: space-between; align-items: baseline; }
   .result-row strong { font-size: 1.125rem; }
 
+  .site-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    font-size: 0.75rem;
+    color: var(--text-sub);
+  }
+  .site-footer p { margin: 0 0 4px; }
+  .site-footer a { color: var(--primary); text-underline-offset: 3px; }
+
   @media (min-width: 900px) {
     main { flex-direction: row; }
     .panel { width: 380px; order: -1; overflow-y: auto; border-right: 1px solid var(--border); }
@@ -247,6 +256,11 @@
       <div class="result-row"><span>予想時間</span><strong id="resultTime">-</strong></div>
       <button type="button" id="anotherBtn" class="btn-secondary">別のルートにする</button>
     </div>
+
+    <footer class="site-footer">
+      <p>ルートは目安です。歩く際は交通ルールを守り、周囲の安全を確認してください。</p>
+      <p><a href="terms.html">利用規約・免責事項</a>　ルート計算：<a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer">openrouteservice</a></p>
+    </footer>
   </section>
 </main>
 

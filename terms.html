@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>利用規約・免責事項｜散歩ルート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap">
+<style>
+  :root {
+    --bg: #f8f8fb;
+    --surface: #ffffff;
+    --text: #1a1a1c;
+    --text-sub: #626264;
+    --border: #d8d8db;
+    --primary: #0017c1;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Noto Sans JP", sans-serif;
+    font-size: 16px;
+    line-height: 1.8;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 16px 64px;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 8px; }
+  h2 { font-size: 1.125rem; margin: 32px 0 8px; padding-top: 16px; border-top: 1px solid var(--border); }
+  p, li { margin: 0 0 8px; }
+  .sub { color: var(--text-sub); font-size: 0.875rem; }
+  a { color: var(--primary); text-underline-offset: 3px; }
+  a:focus-visible { outline: 3px solid #fd0; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="./">← 散歩ルートに戻る</a></p>
+  <h1>利用規約・免責事項</h1>
+  <p class="sub">制定日：2026年10月7日</p>
+
+  <h2>1. このサイトについて</h2>
+  <p>散歩ルート（以下「当サイト」）は、出発地点・歩く時間・歩く速さから、出発地点に戻ってくる散歩ルートを自動で作る個人運営のサイトです。現在はβ版として公開しています。</p>
+
+  <h2>2. ルートについて</h2>
+  <ul>
+    <li>ルートは地図データをもとに機械的に作っています。工事中の道、通行止め、私有地、歩道のない道路、階段、夜間に暗い道などが含まれる場合があります。</li>
+    <li>表示される時間は、選んだ歩く速さから計算した目安です。信号待ちや坂道、寄り道の時間は含まれていません。</li>
+    <li>実際に歩く際は、現地の標識・交通ルールに従い、周囲の安全を確認してください。歩きながらの画面操作は避けてください。</li>
+    <li>体調や天候に合わせて、無理のない範囲でご利用ください。</li>
+  </ul>
+
+  <h2>3. 免責事項</h2>
+  <p>当サイトのルートや情報を利用したことで生じた事故・損害・トラブルについて、運営者は責任を負いません。ルートの正確性・安全性・最新性は保証できません。</p>
+
+  <h2>4. 位置情報の取り扱い</h2>
+  <ul>
+    <li>「現在地を使う」を押した場合に限り、ブラウザを通じて現在地を取得します。取得した現在地は、出発地点の指定と、近い駅の表示にだけ使います。</li>
+    <li>「ルートをつくる」を押すと、出発地点の座標と距離の条件を、ルート計算のために次のサービスへ送信します。
+      <ul>
+        <li>Cloudflare, Inc.（Cloudflare Workers：送信を中継するため）</li>
+        <li>HeiGIT gGmbH（openrouteservice：ルートを計算するため。ドイツの事業者です）</li>
+      </ul>
+    </li>
+    <li>運営者は、出発地点の座標や現在地を記録・保存しません。ただし、上記のサービスが自社の規約にもとづいて通信の記録を保持する場合があります。</li>
+    <li>当サイトはアカウント登録がなく、氏名やメールアドレスなどの個人情報は取得しません。</li>
+  </ul>
+
+  <h2>5. データのライセンスと出典</h2>
+  <ul>
+    <li>地図とルート計算に使う道路データは © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> の著作物で、Open Database License（ODbL）で提供されています。</li>
+    <li>ルート計算には <a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer">openrouteservice</a>（HeiGIT gGmbH）を利用しています。</li>
+    <li>駅のデータは、運営者が運営する「カフェナビ」と共通のものを使っています。掲載は東京都・神奈川県・埼玉県・千葉県の駅のみです。</li>
+  </ul>
+
+  <h2>6. 規約の変更</h2>
+  <p>本規約は、必要に応じて予告なく変更することがあります。</p>
+</main>
+</body>
+</html>
