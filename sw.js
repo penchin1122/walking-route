@@ -3,7 +3,7 @@
 // ・ルート計算（Worker）と地図の画像は保存しない（常に最新を取りに行く）
 // ・index.html などを更新したら、下の VERSION の数字を1つ上げてアップロードする
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = `walking-route-${VERSION}`;
 
 const APP_SHELL = [
